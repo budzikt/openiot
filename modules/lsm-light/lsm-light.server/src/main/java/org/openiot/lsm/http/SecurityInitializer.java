@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SecurityInitializer {
-	private static Logger logger = LoggerFactory.getLogger(SecurityInitializer.class);
+	private static final Logger logger = LoggerFactory.getLogger(SecurityInitializer.class);
 
 	private static final long ID_SERVICE_MANAGER = 1;
 	private static final long ID_HTTP = 2;
@@ -71,7 +71,7 @@ public class SecurityInitializer {
 		props = new PropertyManagement();
 		lSMOauthGraphURL = graphURL;
 		helper = new OauthServletHelper();
-		acUtil = AccessControlUtil.getRestInstance();
+		acUtil = AccessControlUtil.getRestInstance("lsm-server");
 	}
 
 	public static void init() {
@@ -159,7 +159,8 @@ public class SecurityInitializer {
 		predefPermissions.add(new Permission(PermissionsUtil.DEL_TRIPLES_DEMO, "delete triples", ID_LSM_SERVER));
 
 		predefPermissions.add(new Permission(PermissionsUtil.ADD_SENSOR_MAIN, "add new sensor to server", ID_LSM_SERVER));
-		predefPermissions.add(new Permission(PermissionsUtil.ADD_TRIPLES_MAIN, "insert triples into server", ID_LSM_SERVER));
+		Permission addTriplesMain = new Permission(PermissionsUtil.ADD_TRIPLES_MAIN, "insert triples into server", ID_LSM_SERVER);
+		predefPermissions.add(addTriplesMain);
 		predefPermissions.add(new Permission(PermissionsUtil.UPDATE_SENSOR_DATA_MAIN, "add new sensor reading", ID_LSM_SERVER));
 		predefPermissions.add(new Permission(PermissionsUtil.GET_SENSOR_MAIN, "retrieve sensor", ID_LSM_SERVER));
 		predefPermissions.add(new Permission(PermissionsUtil.DEL_SENSOR_MAIN, "delete sensor", ID_LSM_SERVER));
@@ -168,7 +169,7 @@ public class SecurityInitializer {
 
 		Permission allPermLSMServer = new Permission(PermissionsUtil.LSM_ALL, "all permissions", ID_LSM_SERVER);
 		predefPermissions.add(allPermLSMServer);
-		
+
 		// Permissions for the sensor schema editor
 		Permission schemeEditorCreateSensorPerm = new Permission(PermissionsUtil.SCHEMA_EDITOR_CREATE_SENSOR, "Create sensors", ID_SCHEMA_EDITOR);
 		Permission schemeEditorCreateSensorInstancePerm = new Permission(PermissionsUtil.SCHEMA_EDITOR_CREATE_SENSOR_INSTANCE, "Create sensor instances", ID_SCHEMA_EDITOR);
@@ -193,6 +194,9 @@ public class SecurityInitializer {
 
 		User schedulerUser = generateUser("Scheduler", "scheduler@openiot.eu", props.getProperty(SCHEDULER_USERNAME, "scheduleruser"),
 				md5(props.getProperty(SCHEDULER_PASSWORD, "scheduleruserpass")));
+		Role schedulerRoleOnLSM = new Role("scheduler-role", "Scheduler Role on LSM", ID_LSM_SERVER);
+		schedulerRoleOnLSM.addPermission(addTriplesMain);
+		schedulerUser.addRole(schedulerRoleOnLSM);
 		addUser(schedulerUser);
 
 		Role allPermRoleSDUM = new Role("AllPermRole", "This role has the permission *", ID_SDUM);
@@ -209,7 +213,7 @@ public class SecurityInitializer {
 		xgsnRoleOnLSM.addPermission(allPermLSMServer);
 		xgsnUser.addRole(xgsnRoleOnLSM);
 		addUser(xgsnUser);
-		
+
 		Role allPermsRoleSchemaEditor = new Role("Default-Role", "The default role with createSensor and createSensorInstance permissions", ID_SCHEMA_EDITOR);
 		allPermsRoleSchemaEditor.addPermission(schemeEditorCreateSensorPerm);
 		allPermsRoleSchemaEditor.addPermission(schemeEditorCreateSensorInstancePerm);
@@ -226,7 +230,7 @@ public class SecurityInitializer {
 		defaultService.setEvaluationOrder(0);
 		defaultService.setIgnoreAttributes(true);
 		defaultService.setName("Service Manager");
-		String casPrefix = props.getProperty(CAS_PREFIX, "https://localhost:8443/openiot-cas");
+		String casPrefix = props.getProperty(CAS_PREFIX, "https://localhost:8443/openiot-cas").trim();
 		if (casPrefix.endsWith("/") && casPrefix.length() > 1)
 			casPrefix = casPrefix.substring(0, casPrefix.length() - 1);
 		defaultService.setServiceId(casPrefix + "/services/j_acegi_cas_security_check");
@@ -266,7 +270,7 @@ public class SecurityInitializer {
 		userManagementService.setEvaluationOrder(0);
 		userManagementService.setIgnoreAttributes(false);
 		userManagementService.setName(props.getProperty(SECURITY_MANAGEMENT_KEY, "openiot-security-manager-app"));
-		String mgmtAppPrefix = props.getProperty(MGMT_PREFIX, "http://localhost:8080/security.management");
+		String mgmtAppPrefix = props.getProperty(MGMT_PREFIX, "http://localhost:8080/security.management").trim();
 		if (mgmtAppPrefix.endsWith("/") && mgmtAppPrefix.length() > 1)
 			mgmtAppPrefix = mgmtAppPrefix.substring(0, mgmtAppPrefix.length() - 1);
 		userManagementService.setServiceId(mgmtAppPrefix + "/callback?client_name=CasOAuthWrapperClient");
@@ -325,7 +329,7 @@ public class SecurityInitializer {
 		reqDefService.setEvaluationOrder(0);
 		reqDefService.setIgnoreAttributes(false);
 		reqDefService.setName(props.getProperty(REQ_DEF_KEY, "requestDefinitionUI"));
-		String reqDefPrefix = props.getProperty(REQ_DEF_PREFIX, "http://localhost:8080/ui.requestDefinition");
+		String reqDefPrefix = props.getProperty(REQ_DEF_PREFIX, "http://localhost:8080/ui.requestDefinition").trim();
 		if (reqDefPrefix.endsWith("/") && reqDefPrefix.length() > 1)
 			reqDefPrefix = reqDefPrefix.substring(0, reqDefPrefix.length() - 1);
 		reqDefService.setServiceId(reqDefPrefix + "/callback?client_name=CasOAuthWrapperClient");
@@ -342,7 +346,7 @@ public class SecurityInitializer {
 		reqPresService.setEvaluationOrder(0);
 		reqPresService.setIgnoreAttributes(false);
 		reqPresService.setName(props.getProperty(REQ_PRES_KEY, "requestPresentationUI"));
-		String reqPresPrefix = props.getProperty(REQ_PRES_PREFIX, "http://localhost:8080/ui.requestPresentation");
+		String reqPresPrefix = props.getProperty(REQ_PRES_PREFIX, "http://localhost:8080/ui.requestPresentation").trim();
 		if (reqPresPrefix.endsWith("/") && reqPresPrefix.length() > 1)
 			reqPresPrefix = reqPresPrefix.substring(0, reqPresPrefix.length() - 1);
 		reqPresService.setServiceId(reqPresPrefix + "/callback?client_name=CasOAuthWrapperClient");
@@ -354,12 +358,12 @@ public class SecurityInitializer {
 		schemaEditorService.setId(ID_SCHEMA_EDITOR);
 		schemaEditorService.setAllowedToProxy(true);
 		schemaEditorService.setAnonymousAccess(false);
-		schemaEditorService.setDescription(props.getProperty(SCHEMA_EDITOR_SECRET, "schemaEditor.secret"));
+		schemaEditorService.setDescription(props.getProperty(SCHEMA_EDITOR_SECRET, "schemaEditor-secret"));
 		schemaEditorService.setEnabled(true);
 		schemaEditorService.setEvaluationOrder(0);
 		schemaEditorService.setIgnoreAttributes(false);
 		schemaEditorService.setName(props.getProperty(SCHEMA_EDITOR_KEY, "schemaEditor"));
-		String schemaEditorPrefix = props.getProperty(SCHEMA_EDITOR_PREFIX, "http://localhost:8080/sensorschema");
+		String schemaEditorPrefix = props.getProperty(SCHEMA_EDITOR_PREFIX, "http://localhost:8080/sensorschema").trim();
 		if (schemaEditorPrefix.endsWith("/") && schemaEditorPrefix.length() > 1)
 			schemaEditorPrefix = schemaEditorPrefix.substring(0, schemaEditorPrefix.length() - 1);
 		schemaEditorService.setServiceId(schemaEditorPrefix + "/callback?client_name=CasOAuthWrapperClient");
